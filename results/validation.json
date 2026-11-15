@@ -1,0 +1,22 @@
+{
+  "layout": {
+    "tuned_row_pitch_m": 9.0,
+    "tuned_setback_m": 0,
+    "naive_acres_per_mwdc": 4.78,
+    "train_mape": 0.13,
+    "test_mape_model": 0.177,
+    "test_mape_naive": 0.18,
+    "config_matches_tuned": true
+  },
+  "sam": {
+    "site": "Fort Stockton",
+    "years": 25,
+    "mean_diff": 0.0016,
+    "max_abs_year_diff": 0.0036
+  },
+  "uptime": {
+    "sites": 198,
+    "min_uptime": 0.999,
+    "all_pass": true
+  }
+}

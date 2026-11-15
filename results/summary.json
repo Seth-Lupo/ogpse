@@ -1,0 +1,56 @@
+{
+  "county": {
+    "name": "Pecos",
+    "sites": 198,
+    "firm_gw": 31.997789000000004,
+    "best_musd": 21.914459866300003,
+    "worst_musd": 27.5514647172,
+    "median_musd": 24.69887588565,
+    "yield_spread": 0.066678237974507,
+    "land_share": 0.0026107486845643266,
+    "spread": 0.2572276426291742,
+    "unmapped_flood": 198,
+    "drivers": {
+      "weather": 192,
+      "near best": 6
+    }
+  },
+  "feasibility": {
+    "points": 11,
+    "cost_spread": 0.5689742294087925,
+    "yield_spread": 0.12951665884561248,
+    "simple_spread": 0.0682451253481895
+  },
+  "gap": {
+    "site": "Fort Stockton",
+    "simple_pv": 4.17,
+    "simple_hours": 14.0,
+    "simple_uptime": 0.702,
+    "best_pv": 12.92,
+    "best_hours": 48.0,
+    "ratio": 3.331972789115646,
+    "worst5_share": 0.14111894689848126
+  },
+  "validation": {
+    "layout": {
+      "tuned_row_pitch_m": 9.0,
+      "tuned_setback_m": 0,
+      "naive_acres_per_mwdc": 4.78,
+      "train_mape": 0.13,
+      "test_mape_model": 0.177,
+      "test_mape_naive": 0.18,
+      "config_matches_tuned": true
+    },
+    "sam": {
+      "site": "Fort Stockton",
+      "years": 25,
+      "mean_diff": 0.0016,
+      "max_abs_year_diff": 0.0036
+    },
+    "uptime": {
+      "sites": 198,
+      "min_uptime": 0.999,
+      "all_pass": true
+    }
+  }
+}
