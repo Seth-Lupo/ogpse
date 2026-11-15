@@ -11,12 +11,11 @@ _last_request = [0.0]
 
 def _year_file(cfg, lat: float, lon: float, year: int):
     dest = RAW / "nsrdb" / f"{lat:.2f}_{lon:.2f}" / f"{year}.csv"
-    if dest.exists():
-        return dest
-    wait = cfg.weather.request_interval_s - (time.time() - _last_request[0])
-    if wait > 0:
-        time.sleep(wait)
-    _last_request[0] = time.time()
+    if not dest.exists():
+        wait = cfg.weather.request_interval_s - (time.time() - _last_request[0])
+        if wait > 0:
+            time.sleep(wait)
+        _last_request[0] = time.time()
     params = {
         "api_key": os.environ["NREL_DEVELOPER_API_KEY"],
         "email": os.environ["NREL_EMAIL"],
