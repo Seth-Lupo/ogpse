@@ -2,7 +2,7 @@ import argparse
 
 import pandas as pd
 
-from . import config, costs, equipment, firm
+from . import config, costs, equipment, firm, pipeline, validate
 from .config import OUT
 
 
@@ -30,7 +30,12 @@ def feasibility(cfg):
     print(f"\n$/firm MW spread across West Texas: {spread:.1%}")
 
 
-COMMANDS = {"feasibility": feasibility}
+def run(cfg):
+    ranked = pipeline.run(cfg)
+    print(ranked[["site_id", "acres", "firm_mw", "usd_per_firm_mw", "limiting_factor", "flood"]].head(10).to_string())
+
+
+COMMANDS = {"feasibility": feasibility, "run": run, "validate": lambda cfg: validate.run(cfg)}
 
 
 def main():

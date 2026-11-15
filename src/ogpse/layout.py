@@ -57,15 +57,15 @@ def place_rows(cfg, mask: np.ndarray, grid: Grid, module_stc_w: float, pitch_m: 
         for a, b in _runs(mask[:, c]):
             n = int((b - a) * res // string_m)
             sizes = [full] * (n // full) + ([n % full] if n % full >= t.min_strings_per_row else [])
-            top = a
+            pos = a * res
             for k in sizes:
-                cells = int(np.ceil(k * string_m / res))
-                z0, z1 = grid.elevation[top, c], grid.elevation[top + cells - 1, c]
-                if abs(z1 - z0) <= max_tan * k * string_m:
-                    covered[top:top + cells, c] = 1
+                end = pos + k * string_m
+                i0, i1 = int(pos // res), min(int(np.ceil(end / res)), b)
+                if abs(grid.elevation[i1 - 1, c] - grid.elevation[i0, c]) <= max_tan * k * string_m:
+                    covered[i0:i1, c] = 1
                     strings += k
                     rows += 1
-                top += cells
+                pos = end
     for dc in range(1, int(np.ceil(pitch / res))):
         covered[:, np.clip(cols + dc, 0, mask.shape[1] - 1)] |= covered[:, cols]
     footprint = unary_union([shape(g) for g, _ in features.shapes(covered, mask=covered == 1, transform=grid.transform)]) \
