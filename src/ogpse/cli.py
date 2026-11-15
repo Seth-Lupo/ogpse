@@ -1,4 +1,5 @@
 import argparse
+import warnings
 
 import pandas as pd
 
@@ -41,6 +42,8 @@ COMMANDS = {"feasibility": feasibility, "run": run, "validate": lambda cfg: vali
 
 
 def main():
+    warnings.filterwarnings("ignore", category=RuntimeWarning, module="pvlib")  # NaN math at night, masked downstream
+    warnings.filterwarnings("ignore", message=".*names contain.*duplicate")  # SAM library rows we never select
     p = argparse.ArgumentParser(prog="ogpse")
     p.add_argument("command", choices=COMMANDS)
     args = p.parse_args()

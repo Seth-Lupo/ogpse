@@ -8,6 +8,7 @@ study:
   crs: EPSG:32613                    # UTM 13N (Pecos County spans 102.0–104.0 W)
   min_parcel_acres: 2000            # applied to contiguous same-owner holdings (parcels are mostly 640-acre survey sections)
   uptime_target: 0.999               # fraction of hours with load fully served
+  near_best_share: 0.01              # sites within 1% of the county's best cost have no limiting factor
   workers: 8
 
 weather:

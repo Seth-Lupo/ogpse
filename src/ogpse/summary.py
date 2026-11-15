@@ -22,7 +22,10 @@ def build(cfg) -> dict:
     summary = {
         "county": {
             "name": cfg.study.county, "sites": len(sites), "firm_gw": sites.firm_mw.sum() / 1e3,
-            "best_musd": sites.usd_per_firm_mw.min() / 1e6, "median_musd": sites.usd_per_firm_mw.median() / 1e6,
+            "best_musd": sites.usd_per_firm_mw.min() / 1e6, "worst_musd": sites.usd_per_firm_mw.max() / 1e6,
+            "median_musd": sites.usd_per_firm_mw.median() / 1e6,
+            "yield_spread": sites.yield_mwh_per_mwdc.max() / sites.yield_mwh_per_mwdc.min() - 1,
+            "land_share": float((sites.land_usd / sites.total_usd).median()),
             "spread": sites.usd_per_firm_mw.max() / sites.usd_per_firm_mw.min() - 1,
             "unmapped_flood": int((sites.flood == "unmapped").sum()),
             "drivers": sites.limiting_factor.value_counts().to_dict(),

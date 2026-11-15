@@ -3,6 +3,7 @@ from functools import partial
 from multiprocessing import Pool
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 
 from . import costs, equipment, firm, hazards, layout, parcels, terrain
@@ -71,7 +72,9 @@ def rank(cfg, sites, lay, des) -> gpd.GeoDataFrame:
     land_per_mw = s.land_usd / s.firm_mw
     weather_excess = s.equip_usd_per_mw - s.equip_usd_per_mw.min()
     land_excess = land_per_mw - land_per_mw.min()
-    s["limiting_factor"] = (weather_excess >= land_excess).map({True: "weather", False: "land"})
+    s["limiting_factor"] = np.where(weather_excess >= land_excess, "weather", "land")
+    near_best = (weather_excess + land_excess) < cfg.study.near_best_share * s.usd_per_firm_mw.min()
+    s["limiting_factor"] = np.where(near_best, "near best", s.limiting_factor)
     s = s[s.firm_mw > 0].sort_values("usd_per_firm_mw").reset_index(drop=True)
     s.insert(1, "rank", range(1, len(s) + 1))
     return s
@@ -83,16 +86,18 @@ def run(cfg):
     lay = layouts(cfg, sites)
     ranked = rank(cfg, sites, lay, des)
     OUT.mkdir(exist_ok=True)
-    cols = ["site_id", "rank", "acres", "parcels", "buildable_acres", "buildable_share", "flood", "wx_lat", "wx_lon",
+    cols = ["site_id", "rank", "acres", "parcels", "owner_count", "buildable_acres", "buildable_share", "flood", "wx_lat", "wx_lon",
             "yield_mwh_per_mwdc", "pv_mwdc", "firm_mw", "battery_mw", "battery_mwh", "equipment_usd", "land_usd",
             "total_usd", "usd_per_firm_mw", "limiting_factor", "uptime", "simple_usd_per_mw", "simple_uptime"]
     ranked[cols].round(4).to_csv(OUT / "sites.csv", index=False)
     web = ranked[cols + ["geometry"]].to_crs(4326)
     web["geometry"] = web.geometry.simplify(0.0003)
     (ROOT / "web").mkdir(exist_ok=True)
-    web.round(4).to_file(ROOT / "web" / "sites.geojson", driver="GeoJSON")
+    web.round(4).to_file(ROOT / "web" / "sites.geojson", driver="GeoJSON", COORDINATE_PRECISION=5)
     WEB_LAYOUTS.mkdir(parents=True, exist_ok=True)
-    fp = lay[lay.footprint.notna()].to_crs(4326)
-    for site_id, geom in zip(fp.site_id, fp.footprint.simplify(0.0001)):
-        gpd.GeoSeries([geom], crs=4326).to_file(WEB_LAYOUTS / f"{site_id}.geojson", driver="GeoJSON")
+    fp = lay[lay.footprint.notna()]
+    blocks = fp.footprint.buffer(20).buffer(-20).simplify(10).to_crs(4326)  # row strips -> blocks, for display
+    for site_id, geom in zip(fp.site_id, blocks):
+        gpd.GeoSeries([geom], crs=4326).to_file(WEB_LAYOUTS / f"{site_id}.geojson", driver="GeoJSON",
+                                                COORDINATE_PRECISION=5)
     return ranked

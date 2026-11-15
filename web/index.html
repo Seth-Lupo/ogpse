@@ -104,14 +104,19 @@
     <h2>Ranking</h2>
     <div class="span2">
       <p class="muted">Lowest capital cost per firm MW first. Owner names are never shown.</p>
-      <table><thead><tr><th>#</th><th>Site</th><th>Acres</th><th>Firm MW</th><th>$M / firm MW</th><th>Driver</th><th>Flood map</th></tr></thead><tbody id="rank"></tbody></table>
+      <table><thead><tr><th>#</th><th>Site</th><th>Acres</th><th>Firm MW</th><th>$M / firm MW</th><th>Cost driver</th><th>Flood map</th></tr></thead><tbody id="rank"></tbody></table>
     </div>
+  </section>
+
+  <section class="grid">
+    <h2>Finding</h2>
+    <div class="span2" id="finding"></div>
   </section>
 
   <section class="grid" id="method">
     <h2>Method</h2>
     <ol class="steps span2">
-      <li><div><b>Sites.</b> TxGIO 2026 parcels merged into contiguous same-owner holdings; holdings of 2,000+ acres are candidate sites.</div></li>
+      <li><div><b>Sites.</b> TxGIO 2026 parcels merged into contiguous holdings with the same owner or owners (parcels sharing one boundary are co-owned land, counted once); holdings of 2,000+ acres are candidate sites.</div></li>
       <li><div><b>Buildable land.</b> Remove 10 m cells over the tracker slope limit (USGS 3DEP lidar DEM; 8.5° N–S per the Array DuraTrack datasheet), NWI wetlands, and FEMA flood zones. Unmapped flood areas are flagged, not assumed safe.</div></li>
       <li><div><b>Layout.</b> Fill each buildable north–south run with 1-in-portrait tracker rows of 27-module strings at a fixed pitch; drop rows that tilt beyond the tracker limit. Sum MWdc.</div></li>
       <li><div><b>Solar output.</b> pvlib single-axis tracking with backtracking, Perez sky, CEC single-diode module and Sandia inverter models, hourly over 2000–2024 NSRDB weather.</div></li>
@@ -150,8 +155,8 @@ const fmt = (x, d = 0) => x.toLocaleString("en-US", { maximumFractionDigits: d, 
 const musd = x => fmt(x / 1e6, 1);
 
 const map = L.map("map", { zoomSnap: 0.25, scrollWheelZoom: false });
-L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-  attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 16 }).addTo(map);
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+  attribution: "Esri, HERE, Garmin, &copy; OpenStreetMap contributors", maxZoom: 16 }).addTo(map);
 let layoutLayer = null, selected = null, sitesLayer;
 
 Promise.all([fetch("sites.geojson").then(r => r.json()), fetch("summary.json").then(r => r.json())]).then(([sites, s]) => {
@@ -175,7 +180,7 @@ Promise.all([fetch("sites.geojson").then(r => r.json()), fetch("summary.json").t
     const p = f.properties;
     if (selected) sitesLayer.resetStyle(selected);
     selected = layer;
-    layer.setStyle({ weight: 2.5, color: "#0d0d0d" });
+    layer.setStyle({ weight: 2, color: "#0d0d0d", fillOpacity: 0.2 });
     if (layoutLayer) map.removeLayer(layoutLayer);
     fetch(`layouts/${p.site_id}.geojson`).then(r => r.ok ? r.json() : null).then(g => {
       if (!g) return;
@@ -192,6 +197,7 @@ Promise.all([fetch("sites.geojson").then(r => r.json()), fetch("summary.json").t
         <dt>Solar</dt><dd>${fmt(p.pv_mwdc)} MWdc</dd>
         <dt>Battery</dt><dd>${fmt(p.battery_mw)} MW / ${fmt(p.battery_mwh / 1000, 1)} GWh</dd>
         <dt>Holding</dt><dd>${fmt(p.acres)} ac · ${p.parcels} parcels</dd>
+        <dt>Owners</dt><dd>${p.owner_count}</dd>
         <dt>Buildable</dt><dd>${fmt(100 * p.buildable_share)}%</dd>
         <dt>Solar yield</dt><dd>${fmt(p.yield_mwh_per_mwdc)} MWh/MWdc·yr</dd>
         <dt>Uptime, 25 yr</dt><dd>${fmt(100 * p.uptime, 2)}%</dd>
@@ -217,6 +223,12 @@ Promise.all([fetch("sites.geojson").then(r => r.json()), fetch("summary.json").t
     stat(`$${fmt(s.county.best_musd, 1)}M`, "best cost per firm MW") +
     stat(`${fmt(100 * s.county.spread)}%`, "cost spread across sites");
 
+  const c = s.county;
+  document.getElementById("finding").innerHTML = `
+    <p>Within ${c.name} County, cost per firm MW runs from $${fmt(c.best_musd, 1)}M to $${fmt(c.worst_musd, 1)}M, cheapest in the southwest. Annual solar yield across the same sites differs only ${fmt(100 * c.yield_spread, 1)}%.</p>
+    <p>Weather sets the ranking: it is the main cost driver at ${c.drivers.weather || 0} of ${c.sites} sites. Land is ${fmt(100 * c.land_share, 1)}% of capital cost, so buildable acreage decides how many firm megawatts a holding can host, not what each one costs.</p>
+    <p class="muted">The sizing search is fine enough not to matter: refining it moves the best and worst sites by under 0.5%.</p>`;
+
   const g = s.gap;
   document.getElementById("gap").innerHTML = `
     <p>Size solar for annual energy and the battery for one night (${fmt(g.simple_pv, 1)} MWdc and ${fmt(g.simple_hours)} h per firm MW at ${g.site}), and the campus keeps the load on in only <b>${fmt(100 * g.simple_uptime, 1)}%</b> of hours. Meeting 99.9% takes ${fmt(g.best_pv, 1)} MWdc and ${fmt(g.best_hours)} h of storage: <b>${fmt(g.ratio, 1)}×</b> the cost.</p>
@@ -226,7 +238,7 @@ Promise.all([fetch("sites.geojson").then(r => r.json()), fetch("summary.json").t
   const v = s.validation;
   const row = (k, val, note, ok) => `<div class="row"><div><div class="k">${k}</div><div class="muted">${note}</div></div><div class="mono ${ok ? "pass" : "warn"}" style="text-align:right;font-size:13px">${val}</div></div>`;
   document.getElementById("checks").innerHTML =
-    row("Layout vs built plants", `${fmt(100 * v.layout.test_mape_model, 1)}% error`, `Predicted MWdc of 10 unseen West Texas tracker plants (USPVDB), after tuning pitch and setback on 5 others. The naive acres-per-MW rule: ${fmt(100 * v.layout.test_mape_naive, 1)}%.`, v.layout.test_mape_model <= v.layout.test_mape_naive) +
+    row("Layout vs built plants", `${fmt(100 * v.layout.test_mape_model, 1)}% error`, `Predicted MWdc of 10 unseen West Texas tracker plants (USPVDB), after tuning pitch and setback on 5 others. Naive acres-per-MW rule: ${fmt(100 * v.layout.test_mape_naive, 1)}%. Misses the 15% target: built plants range from 3.5 to 6.3 acres per MWdc by design choice, which footprint alone cannot reveal.`, v.layout.test_mape_model <= v.layout.test_mape_naive) +
     row("Solar output vs NREL SAM", `${fmt(100 * Math.abs(v.sam.mean_diff), 1)}% difference`, `Annual energy at ${v.sam.site}, same weather and equipment, ${v.sam.years} years; worst single year ${fmt(100 * v.sam.max_abs_year_diff, 1)}%.`, true) +
     row("Uptime re-check", v.uptime.all_pass ? "all pass" : "FAIL", `Every chosen design re-simulated at full scale, hour by hour, over 25 years. Minimum ${fmt(100 * v.uptime.min_uptime, 2)}%.`, v.uptime.all_pass);
 });
