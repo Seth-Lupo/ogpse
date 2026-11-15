@@ -44,9 +44,17 @@ def _write_row(dest: Path, url: str):
 
 
 def public_url(url: str, params: dict | None) -> str:
+    """Request URL without secrets; long id lists are summarized so the manifest stays readable."""
     if not params:
         return url
-    shown = {k: v for k, v in params.items() if k not in _SECRET_PARAMS and k != "email"}
+    shown = {}
+    for k, v in params.items():
+        if k in _SECRET_PARAMS or k == "email":
+            continue
+        if k == "objectIds":
+            ids = v.split(",")
+            v = f"{ids[0]}..{ids[-1]}({len(ids)})"
+        shown[k] = v
     return requests.Request("GET", url, params=shown).prepare().url
 
 
