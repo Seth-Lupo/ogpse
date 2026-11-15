@@ -23,7 +23,8 @@ def _read_rows() -> list[dict]:
     if not MANIFEST.exists():
         return []
     with open(MANIFEST, newline="") as f:
-        return [r for r in csv.DictReader(f) if len(r) == len(FIELDS) and None not in r.values()]
+        rows = [r for r in csv.DictReader(f) if len(r) == len(FIELDS) and None not in r.values()]
+    return [r for r in rows if r["file"].startswith("data/raw/") and (ROOT / r["file"]).exists()]
 
 
 def _record(dest: Path, url: str):
