@@ -1,0 +1,40 @@
+import geopandas as gpd
+import numpy as np
+
+from .config import CACHE, RAW
+from .sources import fetch
+
+ACRE_M2 = 4046.8564224
+
+
+def _normalize(owner):
+    return owner.fillna("").str.upper().str.replace(r"[^A-Z0-9 ]", "", regex=True).str.split().str.join(" ")
+
+
+def sites(cfg) -> gpd.GeoDataFrame:
+    """Contiguous same-owner holdings >= min acres. Owner names are used only for grouping and are dropped."""
+    out = CACHE / "sites.parquet"
+    if out.exists():
+        return gpd.read_parquet(out)
+    url = cfg.sources.parcels
+    path = fetch(url, RAW / "parcels" / url.rsplit("/", 1)[1])
+    layer = f"zip://{path}!fgdb/stratmap-2026-land-parcels-{cfg.study.county.lower()}_{cfg.study.state_fips}{cfg.study.county_fips}.gdb"
+    p = gpd.read_file(layer).to_crs(cfg.study.crs)
+    p["owner"] = _normalize(p["OWNER_NAME"])
+    p = p[p.owner != ""][["owner", "geometry"]]
+    p["geometry"] = p.buffer(1.0)  # close sliver gaps between surveyed neighbours
+    held = p.dissolve("owner").explode(index_parts=False).reset_index()
+    held["geometry"] = held.buffer(-1.0)
+    parcel_counts = gpd.sjoin(p.assign(geometry=p.representative_point()), held, predicate="within")
+    held["parcels"] = parcel_counts.groupby("index_right").size().reindex(held.index).fillna(0).astype(int)
+    held["acres"] = held.area / ACRE_M2
+    s = held[held.acres >= cfg.study.min_parcel_acres].drop(columns="owner")
+    s = s.sort_values("acres", ascending=False).reset_index(drop=True)
+    s.insert(0, "site_id", [f"PEC-{i:03d}" for i in range(1, len(s) + 1)])
+    ll = s.representative_point().to_crs(4326)
+    step = cfg.weather.grid_deg
+    s["wx_lat"] = np.round(np.round(ll.y / step) * step, 2)
+    s["wx_lon"] = np.round(np.round(ll.x / step) * step, 2)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    s.to_parquet(out)
+    return s
