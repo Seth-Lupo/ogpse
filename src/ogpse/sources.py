@@ -12,35 +12,47 @@ from .config import DATA, ROOT
 
 MANIFEST = DATA / "manifest.csv"
 FIELDS = ["file", "url", "retrieved_utc", "bytes", "sha256"]
-_SECRET_PARAMS = {"api_key"}
+_SECRET_PARAMS = {"api_key", "email"}
 # Some public hosts (TxGIO CloudFront) reject non-browser user agents.
-HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                         "(KHTML, like Gecko) Chrome/140.0 Safari/537.36"}
+_recorded: set[str] | None = None
+
+
+def _read_rows() -> list[dict]:
+    if not MANIFEST.exists():
+        return []
+    with open(MANIFEST, newline="") as f:
+        return [r for r in csv.DictReader(f) if len(r) == len(FIELDS) and None not in r.values()]
 
 
 def _record(dest: Path, url: str):
+    global _recorded
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
     with open(MANIFEST.with_suffix(".lock"), "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        _write_row(dest, url)
+        key = str(dest.relative_to(ROOT))
+        rows = [r for r in _read_rows() if r["file"] != key]
+        rows.append({
+            "file": key,
+            "url": url,
+            "retrieved_utc": datetime.fromtimestamp(dest.stat().st_mtime, timezone.utc).isoformat(timespec="seconds"),
+            "bytes": dest.stat().st_size,
+            "sha256": hashlib.sha256(dest.read_bytes()).hexdigest(),
+        })
+        rows.sort(key=lambda r: r["file"])
+        with open(MANIFEST, "w", newline="") as f:
+            w = csv.DictWriter(f, FIELDS)
+            w.writeheader()
+            w.writerows(rows)
+        _recorded = {r["file"] for r in rows}
 
 
-def _write_row(dest: Path, url: str):
-    rows = []
-    if MANIFEST.exists():
-        with open(MANIFEST) as f:
-            rows = [r for r in csv.DictReader(f) if r["file"] != str(dest.relative_to(ROOT))]
-    rows.append({
-        "file": str(dest.relative_to(ROOT)),
-        "url": url,
-        "retrieved_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "bytes": dest.stat().st_size,
-        "sha256": hashlib.sha256(dest.read_bytes()).hexdigest(),
-    })
-    rows.sort(key=lambda r: r["file"])
-    with open(MANIFEST, "w", newline="") as f:
-        w = csv.DictWriter(f, FIELDS)
-        w.writeheader()
-        w.writerows(rows)
+def _is_recorded(dest: Path) -> bool:
+    global _recorded
+    if _recorded is None:
+        _recorded = {r["file"] for r in _read_rows()}
+    return str(dest.relative_to(ROOT)) in _recorded
 
 
 def public_url(url: str, params: dict | None) -> str:
@@ -49,7 +61,7 @@ def public_url(url: str, params: dict | None) -> str:
         return url
     shown = {}
     for k, v in params.items():
-        if k in _SECRET_PARAMS or k == "email":
+        if k in _SECRET_PARAMS:
             continue
         if k == "objectIds":
             ids = v.split(",")
@@ -60,8 +72,10 @@ def public_url(url: str, params: dict | None) -> str:
 
 def fetch(url: str, dest: Path, params: dict | None = None, method: str = "GET",
           retries: int = 6, timeout: int = 300) -> Path:
-    """Download once, cache forever, and log provenance in data/manifest.csv."""
+    """Download once, cache forever, and log provenance (URL, time, size, SHA-256) in data/manifest.csv."""
     if dest.exists():
+        if not _is_recorded(dest):
+            _record(dest, public_url(url, params))
         return dest
     dest.parent.mkdir(parents=True, exist_ok=True)
     for attempt in range(retries):
