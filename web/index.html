@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OGPSE — Off-grid firm power, site by site</title>
+<meta name="description" content="How much 24/7 solar + battery power each large land holding in Pecos County, Texas can deliver off-grid, and at what cost.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Geist+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    --u: 4px; --max: 1128px; --margin: 24px; --gutter: 24px;
+    --bg: #f7f7f7; --ink: #0d0d0dd9; --muted: #0d0d0d66; --rule: #00000014;
+    --sun: #d95926;
+    --sans: "Inter", "Suisse Intl", Arial, sans-serif;
+    --mono: "Geist Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body { margin: 0; color: var(--ink); font: 400 13px/20px var(--sans); letter-spacing: -.01em; }
+  a { color: inherit; }
+  .wrap { max-width: calc(var(--max) + 2 * var(--margin)); margin: 0 auto; padding: 0 var(--margin); }
+  nav { position: sticky; top: 0; z-index: 1000; background: var(--bg); border-bottom: 1px solid var(--rule); }
+  nav .wrap { display: flex; justify-content: space-between; align-items: center; height: calc(var(--u) * 14); }
+  nav .mark { display: flex; gap: 8px; align-items: center; font-weight: 500; font-size: 14px; text-decoration: none; }
+  nav .mark svg { width: 15px; height: 15px; }
+  nav .links { display: flex; gap: 20px; }
+  nav .links a { text-decoration: none; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--gutter); }
+  section { padding: calc(var(--u) * 20) 0; border-bottom: 1px solid var(--rule); }
+  h1 { margin: 0; font: 400 40px/44px var(--sans); letter-spacing: -.05em; }
+  h2 { margin: 0; font: 400 24px/28px var(--sans); letter-spacing: -.03em; }
+  p { margin: 0 0 16px; }
+  .muted { color: var(--muted); }
+  .mono { font-family: var(--mono); font-size: 11px; letter-spacing: .02em; text-transform: uppercase; }
+  .span2 { grid-column: span 2; }
+  .hero { padding-top: calc(var(--u) * 24); }
+  .hero .lede { font-size: 15px; line-height: 22px; }
+  #map { height: 560px; margin-top: calc(var(--u) * 10); border: 1px solid var(--rule); background: #eee; }
+  .maprow { display: grid; grid-template-columns: 2fr 1fr; gap: var(--gutter); }
+  .panel { margin-top: calc(var(--u) * 10); }
+  .legend { display: flex; align-items: center; gap: 2px; margin: 12px 0 4px; }
+  .legend span { flex: 1; height: 8px; border-radius: 2px; }
+  .legend-labels { display: flex; justify-content: space-between; }
+  dl { display: grid; grid-template-columns: 1fr auto; margin: 16px 0 0; row-gap: 6px; }
+  dt { color: var(--muted); }
+  dd { margin: 0; text-align: right; font-family: var(--mono); font-size: 12px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gutter); margin-top: calc(var(--u) * 8); }
+  .stat .v { font: 400 28px/32px var(--sans); letter-spacing: -.04em; }
+  .stat .l { color: var(--muted); margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  th, td { text-align: right; padding: 7px 0; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+  th { font-weight: 400; color: var(--muted); }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: #0000000a; }
+  ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: s; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 32px 1fr; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  ol.steps li::before { content: counter(s, decimal-leading-zero); font: 11px/20px var(--mono); color: var(--muted); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gutter); padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  .row .k { font-weight: 500; }
+  .pass { color: var(--ink); } .warn { color: var(--sun); }
+  footer { padding: calc(var(--u) * 12) 0 calc(var(--u) * 20); }
+  .leaflet-container { font: inherit; background: #eee; }
+  .leaflet-tooltip { font: 12px/16px var(--sans); border-radius: 2px; box-shadow: none; border: 1px solid var(--rule); }
+  @media (max-width: 860px) {
+    .grid, .maprow, .stats { grid-template-columns: 1fr; }
+    .span2 { grid-column: auto; }
+    #map { height: 420px; }
+  }
+</style>
+</head>
+<body>
+<nav><div class="wrap">
+  <a class="mark" href="#"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="7.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M1 8h14M8 8v7" stroke="currentColor" stroke-width="1.5"/></svg>OGPSE</a>
+  <div class="links"><a href="#method">Method</a><a href="#validation">Validation</a><a href="https://github.com/Seth-Lupo/ogpse">Code</a></div>
+</div></nav>
+
+<main class="wrap">
+  <section class="hero grid">
+    <h1>Firm solar power.<br>Site by site.</h1>
+    <div class="span2 lede">
+      <p>For every contiguous land holding over 2,000 acres in Pecos County, Texas: how many megawatts of round-the-clock power an off-grid solar and battery campus could deliver, and the capital cost per firm megawatt.</p>
+      <p class="muted">No grid, no gas. Load fully served in at least 99.9% of hours across 25 years of satellite weather.</p>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="maprow">
+      <div id="map" role="img" aria-label="Map of Pecos County land holdings colored by cost per firm megawatt"></div>
+      <div class="panel" id="panel">
+        <div class="mono muted">Capital cost per firm MW</div>
+        <div class="legend" id="legend"></div>
+        <div class="legend-labels mono muted" id="legend-labels"></div>
+        <div id="detail" style="margin-top:28px"><p class="muted">Select a site to see its layout and design.</p></div>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section class="grid">
+    <h2>Ranking</h2>
+    <div class="span2">
+      <p class="muted">Lowest capital cost per firm MW first. Owner names are never shown.</p>
+      <table><thead><tr><th>#</th><th>Site</th><th>Acres</th><th>Firm MW</th><th>$M / firm MW</th><th>Driver</th><th>Flood map</th></tr></thead><tbody id="rank"></tbody></table>
+    </div>
+  </section>
+
+  <section class="grid" id="method">
+    <h2>Method</h2>
+    <ol class="steps span2">
+      <li><div><b>Sites.</b> TxGIO 2026 parcels merged into contiguous same-owner holdings; holdings of 2,000+ acres are candidate sites.</div></li>
+      <li><div><b>Buildable land.</b> Remove 10 m cells over the tracker slope limit (USGS 3DEP lidar DEM; 8.5° N–S per the Array DuraTrack datasheet), NWI wetlands, and FEMA flood zones. Unmapped flood areas are flagged, not assumed safe.</div></li>
+      <li><div><b>Layout.</b> Fill each buildable north–south run with 1-in-portrait tracker rows of 27-module strings at a fixed pitch; drop rows that tilt beyond the tracker limit. Sum MWdc.</div></li>
+      <li><div><b>Solar output.</b> pvlib single-axis tracking with backtracking, Perez sky, CEC single-diode module and Sandia inverter models, hourly over 2000–2024 NSRDB weather.</div></li>
+      <li><div><b>Sizing.</b> Per MW of flat load, search battery power and duration; for each, bisect the smallest PV that keeps the hourly state-of-charge simulation at 99.9% of hours served. Keep the cheapest. Uptime counts hours, which an optimizer could only express with one binary variable per hour (219,000); it rises monotonically with PV, so bisection finds the minimum directly.</div></li>
+      <li><div><b>Rank.</b> Firm MW = site MWdc ÷ PV per firm MW. Cost = NREL ATB 2025 equipment cost plus land. The driver column shows whether weather or land puts a site above the county's best.</div></li>
+    </ol>
+  </section>
+
+  <section class="grid">
+    <h2>Why simple math fails</h2>
+    <div class="span2" id="gap"></div>
+  </section>
+
+  <section class="grid" id="validation">
+    <h2>Validation</h2>
+    <div class="span2" id="checks"></div>
+  </section>
+
+  <section class="grid">
+    <h2>Limits</h2>
+    <div class="span2">
+      <p>Hourly energy balance only; no electrical stability, degradation, or battery replacement. Capital cost only, not lifetime cost. One tracker, module, and battery type. Land priced at one fixed $/acre. Weather shared across a 0.2° grid. Pecos County has no FEMA flood maps. No soils, fiber, oil and gas, or easement layers.</p>
+    </div>
+  </section>
+
+  <footer class="grid">
+    <div class="mono muted">Seth Lupo · 2026</div>
+    <div class="span2 muted">Data: TxGIO StratMap Land Parcels, USGS 3DEP, NREL NSRDB v4, FEMA NFHL, USFWS NWI, NREL ATB 2025, CEC module and inverter databases, USGS/LBNL USPVDB. Every download is logged with its URL and SHA-256 in <a href="https://github.com/Seth-Lupo/ogpse/blob/main/data/manifest.csv">data/manifest.csv</a>.</div>
+  </footer>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const RAMP = ["#9c3a12", "#d95926", "#ef8a4c", "#f8b98b", "#fde3cf"];  // cheapest -> costliest, one hue
+const fmt = (x, d = 0) => x.toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d });
+const musd = x => fmt(x / 1e6, 1);
+
+const map = L.map("map", { zoomSnap: 0.25, scrollWheelZoom: false });
+L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+  attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 16 }).addTo(map);
+let layoutLayer = null, selected = null, sitesLayer;
+
+Promise.all([fetch("sites.geojson").then(r => r.json()), fetch("summary.json").then(r => r.json())]).then(([sites, s]) => {
+  const vals = sites.features.map(f => f.properties.usd_per_firm_mw).sort((a, b) => a - b);
+  const q = [0.2, 0.4, 0.6, 0.8].map(p => vals[Math.floor(p * (vals.length - 1))]);
+  const color = v => RAMP[q.filter(t => v > t).length];
+  document.getElementById("legend").innerHTML = RAMP.map(c => `<span style="background:${c}"></span>`).join("");
+  document.getElementById("legend-labels").innerHTML = `<span>$${musd(vals[0])}M</span><span>$${musd(vals[vals.length - 1])}M</span>`;
+
+  const style = f => ({ color: "#ffffff", weight: 0.8, fillColor: color(f.properties.usd_per_firm_mw), fillOpacity: 0.85 });
+  sitesLayer = L.geoJSON(sites, {
+    style,
+    onEachFeature: (f, layer) => {
+      layer.bindTooltip(`${f.properties.site_id} · $${musd(f.properties.usd_per_firm_mw)}M / firm MW`, { sticky: true });
+      layer.on("click", () => select(f, layer));
+    }
+  }).addTo(map);
+  map.fitBounds(sitesLayer.getBounds(), { padding: [10, 10] });
+
+  function select(f, layer) {
+    const p = f.properties;
+    if (selected) sitesLayer.resetStyle(selected);
+    selected = layer;
+    layer.setStyle({ weight: 2.5, color: "#0d0d0d" });
+    if (layoutLayer) map.removeLayer(layoutLayer);
+    fetch(`layouts/${p.site_id}.geojson`).then(r => r.ok ? r.json() : null).then(g => {
+      if (!g) return;
+      layoutLayer = L.geoJSON(g, { style: { color: "#0d0d0d", weight: 0, fillColor: "#0d0d0d", fillOpacity: 0.55 }, interactive: false }).addTo(map);
+    });
+    map.fitBounds(layer.getBounds(), { padding: [30, 30], maxZoom: 13 });
+    document.getElementById("detail").innerHTML = `
+      <div class="mono muted">Rank ${p.rank} of ${vals.length}</div>
+      <h2 style="margin-top:6px">${p.site_id}</h2>
+      <dl>
+        <dt>Firm power</dt><dd>${fmt(p.firm_mw)} MW</dd>
+        <dt>Cost per firm MW</dt><dd>$${musd(p.usd_per_firm_mw)}M</dd>
+        <dt>Total capital cost</dt><dd>$${fmt(p.total_usd / 1e9, 2)}B</dd>
+        <dt>Solar</dt><dd>${fmt(p.pv_mwdc)} MWdc</dd>
+        <dt>Battery</dt><dd>${fmt(p.battery_mw)} MW / ${fmt(p.battery_mwh / 1000, 1)} GWh</dd>
+        <dt>Holding</dt><dd>${fmt(p.acres)} ac · ${p.parcels} parcels</dd>
+        <dt>Buildable</dt><dd>${fmt(100 * p.buildable_share)}%</dd>
+        <dt>Solar yield</dt><dd>${fmt(p.yield_mwh_per_mwdc)} MWh/MWdc·yr</dd>
+        <dt>Uptime, 25 yr</dt><dd>${fmt(100 * p.uptime, 2)}%</dd>
+        <dt>Cost driver</dt><dd>${p.limiting_factor}</dd>
+        <dt>FEMA flood map</dt><dd class="${p.flood === "unmapped" ? "warn" : ""}">${p.flood}</dd>
+      </dl>`;
+  }
+
+  const top = sites.features.slice().sort((a, b) => a.properties.rank - b.properties.rank).slice(0, 12);
+  document.getElementById("rank").innerHTML = top.map(f => {
+    const p = f.properties;
+    return `<tr data-id="${p.site_id}"><td>${p.rank}</td><td>${p.site_id}</td><td>${fmt(p.acres)}</td><td>${fmt(p.firm_mw)}</td><td>${musd(p.usd_per_firm_mw)}</td><td>${p.limiting_factor}</td><td class="${p.flood === "unmapped" ? "warn" : ""}">${p.flood}</td></tr>`;
+  }).join("");
+  document.querySelectorAll("#rank tr").forEach(tr => tr.addEventListener("click", () => {
+    sitesLayer.eachLayer(l => { if (l.feature.properties.site_id === tr.dataset.id) select(l.feature, l); });
+    document.getElementById("map").scrollIntoView({ behavior: "smooth", block: "center" });
+  }));
+
+  const stat = (v, l) => `<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+  document.getElementById("stats").innerHTML =
+    stat(fmt(s.county.sites), "sites over 2,000 acres") +
+    stat(`${fmt(s.county.firm_gw, 1)} GW`, "firm power, all sites") +
+    stat(`$${fmt(s.county.best_musd, 1)}M`, "best cost per firm MW") +
+    stat(`${fmt(100 * s.county.spread)}%`, "cost spread across sites");
+
+  const g = s.gap;
+  document.getElementById("gap").innerHTML = `
+    <p>Size solar for annual energy and the battery for one night (${fmt(g.simple_pv, 1)} MWdc and ${fmt(g.simple_hours)} h per firm MW at ${g.site}), and the campus keeps the load on in only <b>${fmt(100 * g.simple_uptime, 1)}%</b> of hours. Meeting 99.9% takes ${fmt(g.best_pv, 1)} MWdc and ${fmt(g.best_hours)} h of storage: <b>${fmt(g.ratio, 1)}×</b> the cost.</p>
+    <p>The difference is consecutive dark days. The worst 5-day stretch in 25 years delivered ${fmt(100 * g.worst5_share)}% of a normal 5 days of solar energy. The battery must bridge it, and the solar must refill the battery afterwards.</p>
+    <p>Across West Texas, annual solar yield varies ${fmt(100 * s.feasibility.yield_spread)}% but firm cost varies <b>${fmt(100 * s.feasibility.cost_spread)}%</b> (El Paso to Abilene). Simple math predicts a ${fmt(100 * s.feasibility.simple_spread)}% spread. Ranking sites by annual sunshine misses most of the difference.</p>`;
+
+  const v = s.validation;
+  const row = (k, val, note, ok) => `<div class="row"><div><div class="k">${k}</div><div class="muted">${note}</div></div><div class="mono ${ok ? "pass" : "warn"}" style="text-align:right;font-size:13px">${val}</div></div>`;
+  document.getElementById("checks").innerHTML =
+    row("Layout vs built plants", `${fmt(100 * v.layout.test_mape_model, 1)}% error`, `Predicted MWdc of 10 unseen West Texas tracker plants (USPVDB), after tuning pitch and setback on 5 others. The naive acres-per-MW rule: ${fmt(100 * v.layout.test_mape_naive, 1)}%.`, v.layout.test_mape_model <= v.layout.test_mape_naive) +
+    row("Solar output vs NREL SAM", `${fmt(100 * Math.abs(v.sam.mean_diff), 1)}% difference`, `Annual energy at ${v.sam.site}, same weather and equipment, ${v.sam.years} years; worst single year ${fmt(100 * v.sam.max_abs_year_diff, 1)}%.`, true) +
+    row("Uptime re-check", v.uptime.all_pass ? "all pass" : "FAIL", `Every chosen design re-simulated at full scale, hour by hour, over 25 years. Minimum ${fmt(100 * v.uptime.min_uptime, 2)}%.`, v.uptime.all_pass);
+});
+</script>
+</body>
+</html>

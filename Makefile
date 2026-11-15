@@ -1,6 +1,6 @@
-.PHONY: all feasibility run validate test
+.PHONY: all feasibility run validate summary test
 
-all: feasibility run validate
+all: feasibility run validate summary
 
 feasibility:
 	uv run ogpse feasibility
@@ -13,3 +13,6 @@ validate:
 
 test:
 	uv run pytest -q
+
+summary:
+	uv run ogpse summary
