@@ -36,25 +36,24 @@ def designs(cfg, sites: gpd.GeoDataFrame) -> pd.DataFrame:
 
 
 def _layout(cfg, layers, site):
-    eq = equipment.load(cfg)
-    grid = terrain.dem(cfg, site.site_id, site.geometry.bounds)
-    mask = layout.buildable_mask(cfg, site.geometry, grid, layout.exclusions_for(site.geometry, layers))
-    lay = layout.place_rows(cfg, mask, grid, float(eq.module["STC"]))
-    return {"site_id": site.site_id, "rows": lay.rows, "mwdc": lay.mwdc,
-            "buildable_acres": lay.buildable_acres, "flood": layout.flood_status(site.geometry, layers),
-            "footprint": lay.footprint}
+    path = CACHE / "layouts" / f"{site.site_id}.parquet"
+    if not path.exists():
+        eq = equipment.load(cfg)
+        grid = terrain.dem(cfg, site.geometry.bounds)
+        mask = layout.buildable_mask(cfg, site.geometry, grid, layout.exclusions_for(site.geometry, layers))
+        lay = layout.place_rows(cfg, mask, grid, float(eq.module["STC"]))
+        row = {"site_id": site.site_id, "rows": lay.rows, "mwdc": lay.mwdc, "buildable_acres": lay.buildable_acres,
+               "flood": layout.flood_status(site.geometry, layers), "footprint": lay.footprint}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        gpd.GeoDataFrame([row], geometry="footprint", crs=cfg.study.crs).to_parquet(path)
+    return gpd.read_parquet(path)
 
 
-def layouts(cfg, sites: gpd.GeoDataFrame) -> pd.DataFrame:
-    path = CACHE / "layouts.parquet"
-    if path.exists():
-        return gpd.read_parquet(path)
+def layouts(cfg, sites: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     layers = hazards.layers(cfg, sites.to_crs(4326).total_bounds)
     with Pool(cfg.study.workers) as pool:
-        rows = pool.map(partial(_layout, cfg, layers), [s for _, s in sites.iterrows()])
-    df = gpd.GeoDataFrame(rows, geometry="footprint", crs=sites.crs)
-    df.to_parquet(path)
-    return df
+        parts = pool.map(partial(_layout, cfg, layers), [s for _, s in sites.iterrows()], chunksize=1)
+    return gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), geometry="footprint", crs=sites.crs)
 
 
 def rank(cfg, sites, lay, des) -> gpd.GeoDataFrame:
