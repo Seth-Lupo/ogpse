@@ -35,7 +35,8 @@ tracker:
   max_rotation_deg: 52
   max_ns_slope_deg: 8.5              # "Terrain flexibility (N-S): up to 8.5 deg standard"
   max_ew_slope_deg: 25               # "Terrain flexibility (E-W): up to 25 deg combined"
-  modules_per_row: 108               # 4 strings x 27; datasheet typical 84-112
+  modules_per_row: 108               # full row = 4 strings x 27; datasheet typical 84-112
+  min_strings_per_row: 2             # partial rows at block edges (54 modules)
   module_gap_m: 0.02
   gcr_range: [0.28, 0.45]            # datasheet typical GCR
 
@@ -55,9 +56,9 @@ costs:
   cost_year: 2025
   land_usd_per_acre: 1000            # assumption: West Texas rangeland, fixed for all parcels
 
-layout:                              # tuned on 5 USPVDB training plants (validation 1)
-  row_pitch_m: 6.5
-  boundary_setback_m: 30
+layout:                              # pitch and setback frozen from validation 1 (5 USPVDB training plants)
+  row_pitch_m: 9.0
+  boundary_setback_m: 0
   dem_resolution_m: 10               # 3DEP 1 m resampled to 10 m: slope over a tracker-pile span, not 1 m noise
 
 sizing:
@@ -97,6 +98,6 @@ validation:
     dc_ac_ratio: [1.15, 1.5]         # excludes records where DC was not reported (DC == AC)
     count: 15                        # most recent first
     train_every: 3                   # sorted by EIA id, every 3rd plant tunes, the rest test
-  pitch_grid_m: [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0]
+  pitch_grid_m: [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 10.5]   # effective pitch: includes internal roads and equipment pads
   setback_grid_m: [0, 5, 10, 20, 30]
   sam_site: Fort Stockton

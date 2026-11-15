@@ -17,13 +17,13 @@ class Layout:
     footprint: object  # shapely geometry of placed rows, for the map
 
 
-def row_length_m(cfg) -> float:
-    t = cfg.tracker
-    return t.modules_per_row * (cfg.module.width_m + t.module_gap_m)
+def string_length_m(cfg) -> float:
+    return cfg.inverter.modules_per_string * (cfg.module.width_m + cfg.tracker.module_gap_m)
 
 
-def row_mwdc(cfg, module_stc_w: float) -> float:
-    return cfg.tracker.modules_per_row * module_stc_w / 1e6
+def _runs(column: np.ndarray) -> list[tuple[int, int]]:
+    edges = np.diff(np.concatenate([[0], column.astype(np.int8), [0]]))
+    return list(zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)))
 
 
 def buildable_mask(cfg, site_geom, grid: Grid, exclusions: list, setback_m: float | None = None) -> np.ndarray:
@@ -42,33 +42,36 @@ def buildable_mask(cfg, site_geom, grid: Grid, exclusions: list, setback_m: floa
 
 
 def place_rows(cfg, mask: np.ndarray, grid: Grid, module_stc_w: float, pitch_m: float | None = None) -> Layout:
-    """N-S tracker rows on a lattice (pitch E-W, row length N-S); a row is kept only if every cell under it is buildable
-    and its end-to-end N-S tilt is within the tracker limit."""
-    res, pitch = grid.res, pitch_m or cfg.layout.row_pitch_m
-    length = row_length_m(cfg)
-    n_rows_y, n_cols_x = mask.shape
-    span = int(np.ceil(length / res))
-    xs = np.arange(pitch / 2, n_cols_x * res, pitch)
-    cols = (xs // res).astype(int)
-    ok = mask[:, cols].astype(np.int32)
-    csum = np.vstack([np.zeros((1, len(cols)), np.int32), np.cumsum(ok, axis=0)])
-    starts_m = np.arange(0, n_rows_y * res - length + 1e-9, length)
-    r0 = (starts_m // res).astype(int)
-    r1 = np.minimum(r0 + span, n_rows_y)
-    full = (csum[r1] - csum[r0]) == (r1 - r0)[:, None]
-    z = grid.elevation[:, cols]
-    tilt = np.degrees(np.arctan(np.abs(z[r1 - 1] - z[r0]) / length))
-    keep = full & (np.nan_to_num(tilt, nan=90) <= cfg.tracker.max_ns_slope_deg)
-
+    """N-S tracker rows every `pitch` metres E-W. Each contiguous buildable N-S run is filled with full rows,
+    plus one partial row if at least `min_strings_per_row` strings fit; rows whose end-to-end N-S tilt exceeds
+    the tracker limit are dropped."""
+    t, res = cfg.tracker, grid.res
+    pitch = pitch_m or cfg.layout.row_pitch_m
+    string_m = string_length_m(cfg)
+    full = t.modules_per_row // cfg.inverter.modules_per_string
+    max_tan = np.tan(np.radians(t.max_ns_slope_deg))
+    cols = (np.arange(pitch / 2, mask.shape[1] * res, pitch) // res).astype(int)
     covered = np.zeros(mask.shape, np.uint8)
-    for i, j in zip(*np.nonzero(keep)):
-        covered[r0[i]:r1[i], cols[j]] = 1
-    for dj in range(1, int(np.ceil(pitch / res))):
-        covered[:, np.clip(cols + dj, 0, n_cols_x - 1)] |= covered[:, cols]
-    footprint = unary_union([shape(g) for g, v in features.shapes(covered, mask=covered == 1, transform=grid.transform)]) \
-        if keep.any() else None
-    n = int(keep.sum())
-    return Layout(n, n * row_mwdc(cfg, module_stc_w), float(mask.sum()) * res * res / 4046.8564224, footprint)
+    strings = rows = 0
+    for c in cols:
+        for a, b in _runs(mask[:, c]):
+            n = int((b - a) * res // string_m)
+            sizes = [full] * (n // full) + ([n % full] if n % full >= t.min_strings_per_row else [])
+            top = a
+            for k in sizes:
+                cells = int(np.ceil(k * string_m / res))
+                z0, z1 = grid.elevation[top, c], grid.elevation[top + cells - 1, c]
+                if abs(z1 - z0) <= max_tan * k * string_m:
+                    covered[top:top + cells, c] = 1
+                    strings += k
+                    rows += 1
+                top += cells
+    for dc in range(1, int(np.ceil(pitch / res))):
+        covered[:, np.clip(cols + dc, 0, mask.shape[1] - 1)] |= covered[:, cols]
+    footprint = unary_union([shape(g) for g, _ in features.shapes(covered, mask=covered == 1, transform=grid.transform)]) \
+        if rows else None
+    mwdc = strings * cfg.inverter.modules_per_string * module_stc_w / 1e6
+    return Layout(rows, mwdc, float(mask.sum()) * res * res / 4046.8564224, footprint)
 
 
 def exclusions_for(site_geom, layers: dict[str, gpd.GeoDataFrame]) -> list:
