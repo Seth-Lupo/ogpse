@@ -45,7 +45,7 @@ pv_losses:
 battery:
   source: NREL ATB 2025 utility-scale battery storage (LFP-dominant Li-ion)
   round_trip_efficiency: 0.85        # source: ATB 2025
-  power_ratios: [1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0]   # battery MW per MW load; charging must absorb the midday PV surplus
+  power_ratios: [2.0, 3.0, 4.0, 5.0, 6.0, 8.0]   # battery MW per MW load; charging must absorb the midday PV surplus
 
 costs:
   source: NREL ATB 2025 v2.0.0 (OEDI ATBe.parquet), Moderate, R&D financial case, OCC, 2023$
@@ -62,7 +62,7 @@ layout:                              # tuned on 5 USPVDB training plants (valida
 
 sizing:
   pv_ratio_bounds: [1.0, 30.0]       # MWdc per MW load searched by bisection
-  storage_hours: [12, 18, 24, 30, 36, 42, 48, 54, 60, 72, 84, 96]
+  storage_hours: [12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 66, 72, 78, 84, 90, 96]
   pv_tolerance: 0.005
 
 feasibility_points:                  # ~10 points spanning West Texas (lat, lon)

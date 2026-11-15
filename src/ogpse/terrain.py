@@ -24,13 +24,13 @@ class Grid:
         return np.degrees(np.arctan(np.abs(dz_dy))), np.degrees(np.arctan(np.abs(dz_dx)))
 
 
-def dem(cfg, site_id: str, bounds) -> Grid:
+def dem(cfg, site_id: str, bounds, crs: str | None = None) -> Grid:
     """3DEP best-available DEM (1 m lidar in West Texas) resampled server-side to the layout resolution."""
     res = cfg.layout.dem_resolution_m
     xmin, ymin, xmax, ymax = (np.floor(bounds[0] / res) * res, np.floor(bounds[1] / res) * res,
                               np.ceil(bounds[2] / res) * res, np.ceil(bounds[3] / res) * res)
     width, height = int((xmax - xmin) / res), int((ymax - ymin) / res)
-    epsg = cfg.study.crs.split(":")[1]
+    epsg = (crs or cfg.study.crs).split(":")[1]
     params = {
         "bbox": f"{xmin},{ymin},{xmax},{ymax}", "bboxSR": epsg, "imageSR": epsg,
         "size": f"{width},{height}", "format": "tiff", "pixelType": "F32",

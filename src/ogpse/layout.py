@@ -26,10 +26,10 @@ def row_mwdc(cfg, module_stc_w: float) -> float:
     return cfg.tracker.modules_per_row * module_stc_w / 1e6
 
 
-def buildable_mask(cfg, site_geom, grid: Grid, exclusions: list) -> np.ndarray:
+def buildable_mask(cfg, site_geom, grid: Grid, exclusions: list, setback_m: float | None = None) -> np.ndarray:
     """Cells inside the setback boundary, outside exclusions, and within tracker slope limits."""
     t = cfg.tracker
-    inner = site_geom.buffer(-cfg.layout.boundary_setback_m)
+    inner = site_geom.buffer(-(cfg.layout.boundary_setback_m if setback_m is None else setback_m))
     if inner.is_empty:
         return np.zeros(grid.shape, bool)
     mask = features.geometry_mask([inner], grid.shape, grid.transform, invert=True)
