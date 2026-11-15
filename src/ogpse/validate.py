@@ -30,7 +30,7 @@ def plants(cfg) -> gpd.GeoDataFrame:
 def _plant_capacities(cfg, plant, stc_w) -> dict:
     crs = gpd.GeoSeries([plant.geometry], crs=4326).estimate_utm_crs().to_string()
     geom = gpd.GeoSeries([plant.geometry], crs=4326).to_crs(crs).iloc[0]
-    grid = terrain.dem(cfg, f"uspvdb_{plant.eia_id}", geom.buffer(50).bounds, crs)
+    grid = terrain.dem(cfg, geom.buffer(50).bounds, crs)
     out = {}
     for setback in cfg.validation.setback_grid_m:
         mask = layout.buildable_mask(cfg, geom, grid, [], setback_m=setback)
