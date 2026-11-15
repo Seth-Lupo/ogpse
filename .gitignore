@@ -1,0 +1,10 @@
+.env
+.env.*
+.venv/
+__pycache__/
+*.pyc
+data/raw/
+data/cache/
+.pytest_cache/
+.DS_Store
+data/manifest.lock

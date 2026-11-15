@@ -1,0 +1,102 @@
+# OGPSE master configuration. Every number used by the pipeline lives here.
+# `source:` fields cite where a value comes from; `assumption:` marks a judgment call.
+
+study:
+  county: Pecos
+  state_fips: "48"
+  county_fips: "371"
+  crs: EPSG:32613                    # UTM 13N (Pecos County spans 102.0–104.0 W)
+  min_parcel_acres: 2000            # applied to contiguous same-owner holdings (parcels are mostly 640-acre survey sections)
+  uptime_target: 0.999               # fraction of hours with load fully served
+  workers: 8
+
+weather:
+  source: NREL NSRDB GOES Aggregated PSM v4.0.0, hourly, via developer.nlr.gov
+  url: https://developer.nlr.gov/api/nsrdb/v2/solar/nsrdb-GOES-aggregated-v4-0-0-download.csv
+  years: [2000, 2024]                # inclusive; 25 years
+  attributes: [ghi, dni, dhi, air_temperature, wind_speed, surface_albedo]
+  request_interval_s: 2.0
+  grid_deg: 0.2                      # sites share the NSRDB point at the nearest 0.2 deg node; multi-day cloud events are synoptic scale
+
+module:
+  source: CEC module database (SAM library, NatLabRockies/SAM develop/deploy/libraries)
+  name: JA_Solar_JAM72S30_550_MR
+  length_m: 2.278                    # source: JA Solar JAM72S30 MR datasheet
+  width_m: 1.134
+
+inverter:
+  source: CEC inverter database (SAM library), Sandia inverter model
+  name: Delta_Electronics__PCS4300X_X00_US_{690V}
+  dc_ac_ratio: 1.34                  # source: NREL ATB 2025 utility PV inverter loading ratio
+  modules_per_string: 27             # 27 x 49.9 V Voc stays < 1500 V at -10 C
+
+tracker:
+  source: Array Technologies DuraTrack datasheet (Sept 2022)
+  max_rotation_deg: 52
+  max_ns_slope_deg: 8.5              # "Terrain flexibility (N-S): up to 8.5 deg standard"
+  max_ew_slope_deg: 25               # "Terrain flexibility (E-W): up to 25 deg combined"
+  modules_per_row: 108               # 4 strings x 27; datasheet typical 84-112
+  module_gap_m: 0.02
+  gcr_range: [0.28, 0.45]            # datasheet typical GCR
+
+pv_losses:
+  dc_loss: 0.10                      # assumption: soiling 2%, mismatch 2%, wiring 2%, availability 3%, LID 1.5% (PVWatts-style)
+
+battery:
+  source: NREL ATB 2025 utility-scale battery storage (LFP-dominant Li-ion)
+  round_trip_efficiency: 0.85        # source: ATB 2025
+  power_ratios: [1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0]   # battery MW per MW load; charging must absorb the midday PV surplus
+
+costs:
+  source: NREL ATB 2025 v2.0.0 (OEDI ATBe.parquet), Moderate, R&D financial case, OCC, 2023$
+  url: https://oedi-data-lake.s3.amazonaws.com/ATB/electricity/parquet/2025/v2.0.0/ATBe.parquet
+  scenario: Moderate
+  case: R&D
+  cost_year: 2025
+  land_usd_per_acre: 1000            # assumption: West Texas rangeland, fixed for all parcels
+
+layout:                              # tuned on 5 USPVDB training plants (validation 1)
+  row_pitch_m: 6.5
+  boundary_setback_m: 30
+  dem_resolution_m: 10               # 3DEP 1 m resampled to 10 m: slope over a tracker-pile span, not 1 m noise
+
+sizing:
+  pv_ratio_bounds: [1.0, 30.0]       # MWdc per MW load searched by bisection
+  storage_hours: [12, 18, 24, 30, 36, 42, 48, 54, 60, 72, 84, 96]
+  pv_tolerance: 0.005
+
+feasibility_points:                  # ~10 points spanning West Texas (lat, lon)
+  El Paso: [31.80, -106.30]
+  Van Horn: [31.04, -104.83]
+  Marfa: [30.31, -104.02]
+  Fort Stockton: [30.89, -102.88]
+  Pecos: [31.42, -103.49]
+  Monahans: [31.59, -102.89]
+  Odessa: [31.85, -102.37]
+  Big Lake: [31.19, -101.46]
+  Lamesa: [32.74, -101.95]
+  Lubbock: [33.58, -101.85]
+  Abilene: [32.45, -99.73]
+
+sources:
+  parcels: https://data.geographic.texas.gov/1d33dafb-6e9c-40ac-887d-f4577909ed9b/resources/stratmap26-landparcels_48371_lp.zip   # TxGIO StratMap Land Parcels 2026
+  dem: https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer
+  flood: https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer
+  wetlands: https://fwspublicservices.wim.usgs.gov/wetlandsmapservice/rest/services/Wetlands/MapServer
+  uspvdb: https://energy.usgs.gov/uspvdb/
+
+validation:
+  uspvdb_url: https://energy.usgs.gov/uspvdb/assets/data/uspvdbGeoJSON.zip
+  uspvdb_file: uspvdb_v4_0_20260414.geojson
+  plants:                            # deterministic selection of 15 West Texas tracker plants
+    state: TX
+    axis: single-axis
+    max_longitude: -100.0
+    min_mwdc: 50
+    digitize_confidence: 4
+    dc_ac_ratio: [1.15, 1.5]         # excludes records where DC was not reported (DC == AC)
+    count: 15                        # most recent first
+    train_every: 3                   # sorted by EIA id, every 3rd plant tunes, the rest test
+  pitch_grid_m: [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0]
+  setback_grid_m: [0, 5, 10, 20, 30]
+  sam_site: Fort Stockton
