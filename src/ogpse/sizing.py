@@ -17,8 +17,8 @@ class Design:
                       + self.battery_mwh * c.battery_usd_per_kwh)
 
 
-def unserved_hours(pv: np.ndarray, d: Design, rte: float) -> int:
-    """Greedy hourly dispatch of a 1 MW flat load; battery starts full."""
+def unserved_hours(pv: np.ndarray, d: Design, rte: float, trace: list | None = None) -> int:
+    """Greedy hourly dispatch of a 1 MW flat load; battery starts full. Appends end-of-hour charge to trace."""
     eta = rte ** 0.5
     cap, power = d.battery_mwh, d.battery_mw
     soc, misses = cap, 0
@@ -30,7 +30,15 @@ def unserved_hours(pv: np.ndarray, d: Design, rte: float) -> int:
             soc -= out / eta
             if out < -net - 1e-9:
                 misses += 1
+        if trace is not None:
+            trace.append(soc)
     return misses
+
+
+def state_of_charge(pv: np.ndarray, d: Design, rte: float) -> np.ndarray:
+    trace = []
+    unserved_hours(pv, d, rte, trace)
+    return np.array(trace) / d.battery_mwh
 
 
 def uptime(pv: np.ndarray, d: Design, rte: float) -> float:
