@@ -26,7 +26,12 @@
   ol { margin: 0; padding-left: 20px; }
   li { margin-bottom: 10px; }
   .muted { color: var(--muted); }
-  .byline { margin: 12px 0 40px; font: 12px/20px var(--mono); color: var(--muted); }
+  .byline { display: flex; gap: 20px; margin: 12px 0 40px; font: 12px/20px var(--mono); color: var(--muted); }
+  .question { font-size: 20px; line-height: 30px; letter-spacing: -.02em; }
+  .answer { list-style: none; padding: 16px 0; margin: 0 0 24px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+  .answer li { margin: 0; padding: 4px 0; }
+  b, mark { font-weight: 500; }
+  mark { background: #fde3cf; color: inherit; padding: 1px 2px; border-radius: 2px; }
   .num { font-variant-numeric: tabular-nums; }
   #map { height: 520px; margin: 32px 0 8px; border: 1px solid var(--rule); background: #eee; }
   .caption { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: 13px; color: var(--muted); }
@@ -56,10 +61,15 @@
 <body>
 <main>
   <h1>Off-grid solar power for data centers in Pecos County, Texas</h1>
-  <div class="byline">Seth Lupo · November 2026 · <a href="https://github.com/Seth-Lupo/ogpse">Code</a></div>
+  <div class="byline"><span>Seth Lupo</span><span>November 2026</span><a href="https://github.com/Seth-Lupo/ogpse">Code</a></div>
 
-  <p>A data center needs power every hour of the year. If it is built off the grid with only solar panels and batteries, how much power can a given piece of land supply, and what will it cost?</p>
-  <p>This page answers that for each of the <span data-v="county.sites"></span> land holdings over 2,000 acres in Pecos County, Texas. For each holding it lays out solar trackers on the buildable land, simulates 25 years of hourly weather, and finds the cheapest mix of solar and batteries that keeps a constant load running in 99.9% of hours.</p>
+  <p class="question">A data center needs power every hour of the year. If it is built off the grid with only solar panels and batteries, <b>how much power can a piece of land supply, and what will it cost?</b></p>
+  <ul class="answer">
+    <li><b>$<span data-v="county.best_musd" data-d="1"></span>M to $<span data-v="county.worst_musd" data-d="1"></span>M per megawatt</b> of round-the-clock power, about <span data-v="county.firm_gw"></span> GW in total.</li>
+    <li><b>Cost is set by the worst cloudy stretches</b>, not by annual sunshine.</li>
+    <li><b>Sizing from averages fails:</b> it keeps the load on <span data-v="gap.simple_uptime" data-pct></span>% of the time. 99.9% costs <span data-v="gap.ratio" data-d="1"></span> times as much.</li>
+  </ul>
+  <p>This page answers the question for each of the <span data-v="county.sites"></span> land holdings over 2,000 acres in Pecos County, Texas. For each holding it lays out solar trackers on the buildable land, simulates 25 years of hourly weather, and finds the cheapest mix of solar and batteries that keeps a constant load running in 99.9% of hours.</p>
 
   <div id="map" role="img" aria-label="Map of Pecos County land holdings shaded by cost per firm megawatt"></div>
   <div class="caption">
@@ -70,15 +80,15 @@
 
   <h2>Results</h2>
   <p>The cheapest holding costs $<span data-v="county.best_musd" data-d="1"></span>M per megawatt of round-the-clock power, and the most expensive costs $<span data-v="county.worst_musd" data-d="1"></span>M. Costs are lowest in the southwest of the county. All the holdings together could supply about <span data-v="county.firm_gw"></span> GW.</p>
-  <p>Annual sunshine varies only <span data-v="county.yield_spread" data-pct data-d="1"></span>% across the county, so it does not explain the difference. What matters is how bad the worst runs of cloudy days are, because that sets how big the system has to be.</p>
+  <p>Annual sunshine varies only <span data-v="county.yield_spread" data-pct data-d="1"></span>% across the county, so it does not explain the difference. <mark>What matters is how bad the worst runs of cloudy days are</mark>, because that sets how big the system has to be.</p>
   <p>Land is about <span data-v="county.land_share" data-pct data-d="1"></span>% of the cost. It decides how many megawatts a holding can support, but has little effect on the cost per megawatt.</p>
 
   <table><thead><tr><th>Rank</th><th>Holding</th><th>Acres</th><th>Firm MW</th><th>$M per MW</th></tr></thead><tbody id="rank"></tbody></table>
 
   <h2>Why sizing from averages fails</h2>
-  <p>The obvious way to size a system is to build enough solar to cover a year's energy and enough battery to get through one night. At <span data-v="gap.site"></span> that means <span data-v="gap.simple_pv" data-d="1"></span> MW of solar and <span data-v="gap.simple_hours"></span> hours of storage per MW of load. Simulated over 25 years, that system keeps the load running only <span data-v="gap.simple_uptime" data-pct data-d="1"></span>% of the time.</p>
-  <p>Reaching 99.9% takes <span data-v="gap.best_pv" data-d="1"></span> MW of solar and <span data-v="gap.best_hours"></span> hours of storage, which costs <span data-v="gap.ratio" data-d="1"></span> times as much. The reason is runs of cloudy days. In the worst 5 days of the 25 years, the panels produced <span data-v="gap.worst5_share" data-pct></span>% of their normal output. The battery has to carry the load through that, and the extra panels have to recharge it afterward.</p>
-  <p>The same thing happens across West Texas. From El Paso to Abilene, annual solar output differs by <span data-v="feasibility.yield_spread" data-pct></span>%, but the cost of firm power differs by <span data-v="feasibility.cost_spread" data-pct></span>%.</p>
+  <p>The obvious way to size a system is to build enough solar to cover a year's energy and enough battery to get through one night. At <span data-v="gap.site"></span> that means <span data-v="gap.simple_pv" data-d="1"></span> MW of solar and <span data-v="gap.simple_hours"></span> hours of storage per MW of load. Simulated over 25 years, that system <mark>keeps the load running only <span data-v="gap.simple_uptime" data-pct data-d="1"></span>% of the time</mark>.</p>
+  <p>Reaching 99.9% takes <span data-v="gap.best_pv" data-d="1"></span> MW of solar and <span data-v="gap.best_hours"></span> hours of storage, which <mark>costs <span data-v="gap.ratio" data-d="1"></span> times as much</mark>. The reason is runs of cloudy days. In the worst 5 days of the 25 years, the panels produced <span data-v="gap.worst5_share" data-pct></span>% of their normal output. The battery has to carry the load through that, and the extra panels have to recharge it afterward.</p>
+  <p>The same thing happens across West Texas. From El Paso to Abilene, annual solar output differs by <span data-v="feasibility.yield_spread" data-pct></span>%, but <mark>the cost of firm power differs by <span data-v="feasibility.cost_spread" data-pct></span>%</mark>.</p>
 
   <h2>Method</h2>
   <ol>
@@ -98,7 +108,7 @@
   </ol>
 
   <h2>Limits</h2>
-  <p>Only construction cost is counted, not operations, financing, or battery replacement. The energy balance is hourly, so it says nothing about grid stability or faster effects. Real campuses keep backup generators, which would make the last 0.1% much cheaper. Soils, roads, easements, and oil and gas are not considered. Pecos County has no FEMA flood maps, so flood risk is unknown, not zero.</p>
+  <p>Only construction cost is counted, not operations, financing, or battery replacement. The energy balance is hourly, so it says nothing about grid stability or faster effects. Real campuses keep backup generators, which would make the last 0.1% much cheaper. Soils, roads, easements, and oil and gas are not considered. Pecos County has no FEMA flood maps, so <mark>flood risk is unknown, not zero</mark>.</p>
 
   <footer>
     <p>Data: TxGIO StratMap parcels, USGS 3DEP, NREL NSRDB, FEMA NFHL, USFWS NWI, NREL ATB 2025, CEC equipment databases, USGS/LBNL USPVDB. Every download is logged with its URL and checksum in <a href="https://github.com/Seth-Lupo/ogpse/blob/main/data/manifest.csv">data/manifest.csv</a>. Owner names are used only to group parcels and are not shown.</p>

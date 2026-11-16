@@ -2,7 +2,7 @@
 
 For each land holding over 2,000 acres in Pecos County, Texas, this estimates how much constant power an off-grid solar and battery plant could supply, and what it would cost per megawatt.
 
-**[ogpse.sethlupo.com](https://ogpse.sethlupo.com)** · [REPORT.md](REPORT.md)
+**[ogpse.sethlupo.com](https://ogpse.sethlupo.com)**, [REPORT.md](REPORT.md)
 
 ![map](docs/map.png)
 
