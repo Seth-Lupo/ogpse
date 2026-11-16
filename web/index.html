@@ -3,148 +3,105 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OGPSE — Off-grid firm power, site by site</title>
-<meta name="description" content="How much 24/7 solar + battery power each large land holding in Pecos County, Texas can deliver off-grid, and at what cost.">
+<title>Off-grid solar power for data centers in Pecos County, Texas</title>
+<meta name="description" content="How much round-the-clock solar and battery power each large land holding in Pecos County, Texas can supply off-grid, and what it costs.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Geist+Mono:wght@400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root {
-    --u: 4px; --max: 1128px; --margin: 24px; --gutter: 24px;
     --bg: #f7f7f7; --ink: #0d0d0dd9; --muted: #0d0d0d66; --rule: #00000014;
-    --sun: #d95926;
     --sans: "Inter", "Suisse Intl", Arial, sans-serif;
     --mono: "Geist Mono", ui-monospace, monospace;
   }
   * { box-sizing: border-box; }
   html { background: var(--bg); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-  body { margin: 0; color: var(--ink); font: 400 13px/20px var(--sans); letter-spacing: -.01em; }
+  body { margin: 0; color: var(--ink); font: 400 15px/24px var(--sans); letter-spacing: -.01em; }
   a { color: inherit; }
-  .wrap { max-width: calc(var(--max) + 2 * var(--margin)); margin: 0 auto; padding: 0 var(--margin); }
-  nav { position: sticky; top: 0; z-index: 1000; background: var(--bg); border-bottom: 1px solid var(--rule); }
-  nav .wrap { display: flex; justify-content: space-between; align-items: center; height: calc(var(--u) * 14); }
-  nav .mark { display: flex; gap: 8px; align-items: center; font-weight: 500; font-size: 14px; text-decoration: none; }
-  nav .mark svg { width: 15px; height: 15px; }
-  nav .links { display: flex; gap: 20px; }
-  nav .links a { text-decoration: none; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--gutter); }
-  section { padding: calc(var(--u) * 20) 0; border-bottom: 1px solid var(--rule); }
-  h1 { margin: 0; font: 400 40px/44px var(--sans); letter-spacing: -.05em; }
-  h2 { margin: 0; font: 400 24px/28px var(--sans); letter-spacing: -.03em; }
+  main { max-width: 720px; margin: 0 auto; padding: 96px 24px 80px; }
+  h1 { margin: 0; font: 400 32px/38px var(--sans); letter-spacing: -.04em; }
+  h2 { margin: 56px 0 12px; font: 500 15px/24px var(--sans); }
   p { margin: 0 0 16px; }
+  ol { margin: 0; padding-left: 20px; }
+  li { margin-bottom: 10px; }
   .muted { color: var(--muted); }
-  .mono { font-family: var(--mono); font-size: 11px; letter-spacing: .02em; text-transform: uppercase; }
-  .span2 { grid-column: span 2; }
-  .hero { padding-top: calc(var(--u) * 24); }
-  .hero .lede { font-size: 15px; line-height: 22px; }
-  #map { height: 560px; margin-top: calc(var(--u) * 10); border: 1px solid var(--rule); background: #eee; }
-  .maprow { display: grid; grid-template-columns: 2fr 1fr; gap: var(--gutter); }
-  .panel { margin-top: calc(var(--u) * 10); }
-  .legend { display: flex; align-items: center; gap: 2px; margin: 12px 0 4px; }
-  .legend span { flex: 1; height: 8px; border-radius: 2px; }
-  .legend-labels { display: flex; justify-content: space-between; }
-  dl { display: grid; grid-template-columns: 1fr auto; margin: 16px 0 0; row-gap: 6px; }
+  .byline { margin: 12px 0 40px; font: 12px/20px var(--mono); color: var(--muted); }
+  .num { font-variant-numeric: tabular-nums; }
+  #map { height: 520px; margin: 32px 0 8px; border: 1px solid var(--rule); background: #eee; }
+  .caption { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: 13px; color: var(--muted); }
+  .legend { display: flex; gap: 2px; align-items: center; font: 11px var(--mono); }
+  .legend span.sw { width: 18px; height: 8px; border-radius: 2px; }
+  #detail:empty { display: none; }
+  dl { display: grid; grid-template-columns: 1fr auto 1fr auto; column-gap: 24px; row-gap: 4px; margin: 16px 0 0; font-size: 13px; }
   dt { color: var(--muted); }
-  dd { margin: 0; text-align: right; font-family: var(--mono); font-size: 12px; }
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gutter); margin-top: calc(var(--u) * 8); }
-  .stat .v { font: 400 28px/32px var(--sans); letter-spacing: -.04em; }
-  .stat .l { color: var(--muted); margin-top: 4px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-  th, td { text-align: right; padding: 7px 0; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+  dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 6px 0; border-bottom: 1px solid var(--rule); }
   th { font-weight: 400; color: var(--muted); }
   th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
   tbody tr { cursor: pointer; }
   tbody tr:hover { background: #0000000a; }
-  ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: s; }
-  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 32px 1fr; padding: 12px 0; border-bottom: 1px solid var(--rule); }
-  ol.steps li::before { content: counter(s, decimal-leading-zero); font: 11px/20px var(--mono); color: var(--muted); }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gutter); padding: 12px 0; border-bottom: 1px solid var(--rule); }
-  .row .k { font-weight: 500; }
-  .pass { color: var(--ink); } .warn { color: var(--sun); }
-  footer { padding: calc(var(--u) * 12) 0 calc(var(--u) * 20); }
+  footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--muted); }
   .leaflet-container { font: inherit; background: #eee; }
+  .leaflet-interactive:focus { outline: none; }
   .leaflet-tooltip { font: 12px/16px var(--sans); border-radius: 2px; box-shadow: none; border: 1px solid var(--rule); }
-  @media (max-width: 860px) {
-    .grid, .maprow, .stats { grid-template-columns: 1fr; }
-    .span2 { grid-column: auto; }
-    #map { height: 420px; }
+  @media (max-width: 640px) {
+    main { padding-top: 48px; }
+    #map { height: 400px; }
+    dl { grid-template-columns: 1fr auto; }
   }
 </style>
 </head>
 <body>
-<nav><div class="wrap">
-  <a class="mark" href="#"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="7.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M1 8h14M8 8v7" stroke="currentColor" stroke-width="1.5"/></svg>OGPSE</a>
-  <div class="links"><a href="#method">Method</a><a href="#validation">Validation</a><a href="https://github.com/Seth-Lupo/ogpse">Code</a></div>
-</div></nav>
+<main>
+  <h1>Off-grid solar power for data centers in Pecos County, Texas</h1>
+  <div class="byline">Seth Lupo · November 2026 · <a href="https://github.com/Seth-Lupo/ogpse">Code</a></div>
 
-<main class="wrap">
-  <section class="hero grid">
-    <h1>Firm solar power.<br>Site by site.</h1>
-    <div class="span2 lede">
-      <p>For every contiguous land holding over 2,000 acres in Pecos County, Texas: how many megawatts of round-the-clock power an off-grid solar and battery campus could deliver, and the capital cost per firm megawatt.</p>
-      <p class="muted">No grid, no gas. Load fully served in at least 99.9% of hours across 25 years of satellite weather.</p>
-    </div>
-  </section>
+  <p>A data center needs power every hour of the year. If it is built off the grid with only solar panels and batteries, how much power can a given piece of land supply, and what will it cost?</p>
+  <p>This page answers that for each of the <span data-v="county.sites"></span> land holdings over 2,000 acres in Pecos County, Texas. For each holding it lays out solar trackers on the buildable land, simulates 25 years of hourly weather, and finds the cheapest mix of solar and batteries that keeps a constant load running in 99.9% of hours.</p>
 
-  <section style="padding-top:0">
-    <div class="maprow">
-      <div id="map" role="img" aria-label="Map of Pecos County land holdings colored by cost per firm megawatt"></div>
-      <div class="panel" id="panel">
-        <div class="mono muted">Capital cost per firm MW</div>
-        <div class="legend" id="legend"></div>
-        <div class="legend-labels mono muted" id="legend-labels"></div>
-        <div id="detail" style="margin-top:28px"><p class="muted">Select a site to see its layout and design.</p></div>
-      </div>
-    </div>
-    <div class="stats" id="stats"></div>
-  </section>
+  <div id="map" role="img" aria-label="Map of Pecos County land holdings shaded by cost per firm megawatt"></div>
+  <div class="caption">
+    <span>Cost per megawatt of firm power. Click a holding to see its tracker layout.</span>
+    <span class="legend" id="legend"></span>
+  </div>
+  <div id="detail"></div>
 
-  <section class="grid">
-    <h2>Ranking</h2>
-    <div class="span2">
-      <p class="muted">Lowest capital cost per firm MW first. Owner names are never shown.</p>
-      <table><thead><tr><th>#</th><th>Site</th><th>Acres</th><th>Firm MW</th><th>$M / firm MW</th><th>Cost driver</th><th>Flood map</th></tr></thead><tbody id="rank"></tbody></table>
-    </div>
-  </section>
+  <h2>Results</h2>
+  <p>The cheapest holding costs $<span data-v="county.best_musd" data-d="1"></span>M per megawatt of round-the-clock power, and the most expensive costs $<span data-v="county.worst_musd" data-d="1"></span>M. Costs are lowest in the southwest of the county. All the holdings together could supply about <span data-v="county.firm_gw"></span> GW.</p>
+  <p>Annual sunshine varies only <span data-v="county.yield_spread" data-pct data-d="1"></span>% across the county, so it does not explain the difference. What matters is how bad the worst runs of cloudy days are, because that sets how big the system has to be.</p>
+  <p>Land is about <span data-v="county.land_share" data-pct data-d="1"></span>% of the cost. It decides how many megawatts a holding can support, but has little effect on the cost per megawatt.</p>
 
-  <section class="grid">
-    <h2>Finding</h2>
-    <div class="span2" id="finding"></div>
-  </section>
+  <table><thead><tr><th>Rank</th><th>Holding</th><th>Acres</th><th>Firm MW</th><th>$M per MW</th></tr></thead><tbody id="rank"></tbody></table>
 
-  <section class="grid" id="method">
-    <h2>Method</h2>
-    <ol class="steps span2">
-      <li><div><b>Sites.</b> TxGIO 2026 parcels merged into contiguous holdings with the same owner or owners (parcels sharing one boundary are co-owned land, counted once); holdings of 2,000+ acres are candidate sites.</div></li>
-      <li><div><b>Buildable land.</b> Remove 10 m cells over the tracker slope limit (USGS 3DEP lidar DEM; 8.5° N–S per the Array DuraTrack datasheet), NWI wetlands, and FEMA flood zones. Unmapped flood areas are flagged, not assumed safe.</div></li>
-      <li><div><b>Layout.</b> Fill each buildable north–south run with 1-in-portrait tracker rows of 27-module strings at a fixed pitch; drop rows that tilt beyond the tracker limit. Sum MWdc.</div></li>
-      <li><div><b>Solar output.</b> pvlib single-axis tracking with backtracking, Perez sky, CEC single-diode module and Sandia inverter models, hourly over 2000–2024 NSRDB weather.</div></li>
-      <li><div><b>Sizing.</b> Per MW of flat load, search battery power and duration; for each, bisect the smallest PV that keeps the hourly state-of-charge simulation at 99.9% of hours served. Keep the cheapest. Uptime counts hours, which an optimizer could only express with one binary variable per hour (219,000); it rises monotonically with PV, so bisection finds the minimum directly.</div></li>
-      <li><div><b>Rank.</b> Firm MW = site MWdc ÷ PV per firm MW. Cost = NREL ATB 2025 equipment cost plus land. The driver column shows whether weather or land puts a site above the county's best.</div></li>
-    </ol>
-  </section>
+  <h2>Why sizing from averages fails</h2>
+  <p>The obvious way to size a system is to build enough solar to cover a year's energy and enough battery to get through one night. At <span data-v="gap.site"></span> that means <span data-v="gap.simple_pv" data-d="1"></span> MW of solar and <span data-v="gap.simple_hours"></span> hours of storage per MW of load. Simulated over 25 years, that system keeps the load running only <span data-v="gap.simple_uptime" data-pct data-d="1"></span>% of the time.</p>
+  <p>Reaching 99.9% takes <span data-v="gap.best_pv" data-d="1"></span> MW of solar and <span data-v="gap.best_hours"></span> hours of storage, which costs <span data-v="gap.ratio" data-d="1"></span> times as much. The reason is runs of cloudy days. In the worst 5 days of the 25 years, the panels produced <span data-v="gap.worst5_share" data-pct></span>% of their normal output. The battery has to carry the load through that, and the extra panels have to recharge it afterward.</p>
+  <p>The same thing happens across West Texas. From El Paso to Abilene, annual solar output differs by <span data-v="feasibility.yield_spread" data-pct></span>%, but the cost of firm power differs by <span data-v="feasibility.cost_spread" data-pct></span>%.</p>
 
-  <section class="grid">
-    <h2>Why simple math fails</h2>
-    <div class="span2" id="gap"></div>
-  </section>
+  <h2>Method</h2>
+  <ol>
+    <li><b>Land.</b> Parcels from the Texas state GIS office, merged into contiguous holdings with the same owners. Parcels with identical boundaries are shares of one piece of land, so they count once.</li>
+    <li><b>Buildable area.</b> A 10 m elevation grid from USGS lidar. Cells are excluded if they are too steep for trackers (8.5° north–south) or fall in a mapped wetland or flood zone.</li>
+    <li><b>Layout.</b> North–south tracker rows 9 m apart. A row is dropped if it would tilt too far end to end.</li>
+    <li><b>Solar output.</b> A pvlib model of single-axis trackers, run hourly on NSRDB satellite weather for 2000–2024.</li>
+    <li><b>Sizing.</b> For each battery size, find the smallest solar array that keeps the load on in 99.9% of hours, using an hourly battery simulation and bisection. Keep the cheapest combination. A linear program would need a yes/no variable for each of the 219,000 hours. Bisection works because uptime only rises as solar is added.</li>
+    <li><b>Cost.</b> Equipment from NREL's 2025 Annual Technology Baseline. Land at $1,000 per acre.</li>
+  </ol>
 
-  <section class="grid" id="validation">
-    <h2>Validation</h2>
-    <div class="span2" id="checks"></div>
-  </section>
+  <h2>Checks</h2>
+  <ol>
+    <li><b>Layout.</b> After tuning row spacing on 5 built West Texas solar plants, the model predicted the capacity of 10 others within <span data-v="validation.layout.test_mape_model" data-pct data-d="1"></span>% on average. A simple acres-per-MW rule gets <span data-v="validation.layout.test_mape_naive" data-pct data-d="1"></span>%. Built plants use 3.5 to 6.3 acres per MW depending on design choices that a property boundary can't show, so neither method does much better.</li>
+    <li><b>Solar model.</b> Compared with NREL's SAM on the same inputs over 25 years, annual energy differs by <span data-v="validation.sam.mean_diff" data-pct data-d="2"></span>%.</li>
+    <li><b>Uptime.</b> Every design was re-simulated at full scale. All <span data-v="validation.uptime.sites"></span> meet 99.9%.</li>
+  </ol>
 
-  <section class="grid">
-    <h2>Limits</h2>
-    <div class="span2">
-      <p>Hourly energy balance only; no electrical stability, degradation, or battery replacement. Capital cost only, not lifetime cost. One tracker, module, and battery type. Land priced at one fixed $/acre. Weather shared across a 0.2° grid. Pecos County has no FEMA flood maps. No soils, fiber, oil and gas, or easement layers.</p>
-    </div>
-  </section>
+  <h2>Limits</h2>
+  <p>Only construction cost is counted, not operations, financing, or battery replacement. The energy balance is hourly, so it says nothing about grid stability or faster effects. Real campuses keep backup generators, which would make the last 0.1% much cheaper. Soils, roads, easements, and oil and gas are not considered. Pecos County has no FEMA flood maps, so flood risk is unknown, not zero.</p>
 
-  <footer class="grid">
-    <div class="mono muted">Seth Lupo · 2026</div>
-    <div class="span2 muted">Data: TxGIO StratMap Land Parcels, USGS 3DEP, NREL NSRDB v4, FEMA NFHL, USFWS NWI, NREL ATB 2025, CEC module and inverter databases, USGS/LBNL USPVDB. Every download is logged with its URL and SHA-256 in <a href="https://github.com/Seth-Lupo/ogpse/blob/main/data/manifest.csv">data/manifest.csv</a>.</div>
+  <footer>
+    <p>Data: TxGIO StratMap parcels, USGS 3DEP, NREL NSRDB, FEMA NFHL, USFWS NWI, NREL ATB 2025, CEC equipment databases, USGS/LBNL USPVDB. Every download is logged with its URL and checksum in <a href="https://github.com/Seth-Lupo/ogpse/blob/main/data/manifest.csv">data/manifest.csv</a>. Owner names are used only to group parcels and are not shown.</p>
   </footer>
 </main>
 
@@ -160,17 +117,26 @@ L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_L
 let layoutLayer = null, selected = null, sitesLayer;
 
 Promise.all([fetch("sites.geojson").then(r => r.json()), fetch("summary.json").then(r => r.json())]).then(([sites, s]) => {
+  document.querySelectorAll("[data-v]").forEach(el => {
+    let x = el.dataset.v.split(".").reduce((o, k) => o[k], s);
+    if (typeof x === "number") {
+      if ("pct" in el.dataset) x = 100 * Math.abs(x);
+      x = fmt(x, +(el.dataset.d || 0));
+    }
+    el.textContent = x;
+  });
+
   const vals = sites.features.map(f => f.properties.usd_per_firm_mw).sort((a, b) => a - b);
   const q = [0.2, 0.4, 0.6, 0.8].map(p => vals[Math.floor(p * (vals.length - 1))]);
   const color = v => RAMP[q.filter(t => v > t).length];
-  document.getElementById("legend").innerHTML = RAMP.map(c => `<span style="background:${c}"></span>`).join("");
-  document.getElementById("legend-labels").innerHTML = `<span>$${musd(vals[0])}M</span><span>$${musd(vals[vals.length - 1])}M</span>`;
+  document.getElementById("legend").innerHTML =
+    `$${musd(vals[0])}M&nbsp;` + RAMP.map(c => `<span class="sw" style="background:${c}"></span>`).join("") + `&nbsp;$${musd(vals[vals.length - 1])}M`;
 
   const style = f => ({ color: "#ffffff", weight: 0.8, fillColor: color(f.properties.usd_per_firm_mw), fillOpacity: 0.85 });
   sitesLayer = L.geoJSON(sites, {
     style,
     onEachFeature: (f, layer) => {
-      layer.bindTooltip(`${f.properties.site_id} · $${musd(f.properties.usd_per_firm_mw)}M / firm MW`, { sticky: true });
+      layer.bindTooltip(`${f.properties.site_id} · $${musd(f.properties.usd_per_firm_mw)}M per MW`, { sticky: true });
       layer.on("click", () => select(f, layer));
     }
   }).addTo(map);
@@ -188,59 +154,27 @@ Promise.all([fetch("sites.geojson").then(r => r.json()), fetch("summary.json").t
     });
     map.fitBounds(layer.getBounds(), { padding: [30, 30], maxZoom: 13 });
     document.getElementById("detail").innerHTML = `
-      <div class="mono muted">Rank ${p.rank} of ${vals.length}</div>
-      <h2 style="margin-top:6px">${p.site_id}</h2>
       <dl>
+        <dt>Holding</dt><dd>${p.site_id}, rank ${p.rank} of ${vals.length}</dd>
         <dt>Firm power</dt><dd>${fmt(p.firm_mw)} MW</dd>
-        <dt>Cost per firm MW</dt><dd>$${musd(p.usd_per_firm_mw)}M</dd>
-        <dt>Total capital cost</dt><dd>$${fmt(p.total_usd / 1e9, 2)}B</dd>
+        <dt>Area</dt><dd>${fmt(p.acres)} acres, ${fmt(100 * p.buildable_share)}% buildable</dd>
+        <dt>Cost per MW</dt><dd>$${musd(p.usd_per_firm_mw)}M</dd>
+        <dt>Owners</dt><dd>${p.owner_count}</dd>
+        <dt>Total cost</dt><dd>$${fmt(p.total_usd / 1e9, 2)}B</dd>
         <dt>Solar</dt><dd>${fmt(p.pv_mwdc)} MWdc</dd>
         <dt>Battery</dt><dd>${fmt(p.battery_mw)} MW / ${fmt(p.battery_mwh / 1000, 1)} GWh</dd>
-        <dt>Holding</dt><dd>${fmt(p.acres)} ac · ${p.parcels} parcels</dd>
-        <dt>Owners</dt><dd>${p.owner_count}</dd>
-        <dt>Buildable</dt><dd>${fmt(100 * p.buildable_share)}%</dd>
-        <dt>Solar yield</dt><dd>${fmt(p.yield_mwh_per_mwdc)} MWh/MWdc·yr</dd>
-        <dt>Uptime, 25 yr</dt><dd>${fmt(100 * p.uptime, 2)}%</dd>
-        <dt>Cost driver</dt><dd>${p.limiting_factor}</dd>
-        <dt>FEMA flood map</dt><dd class="${p.flood === "unmapped" ? "warn" : ""}">${p.flood}</dd>
       </dl>`;
   }
 
-  const top = sites.features.slice().sort((a, b) => a.properties.rank - b.properties.rank).slice(0, 12);
+  const top = sites.features.slice().sort((a, b) => a.properties.rank - b.properties.rank).slice(0, 10);
   document.getElementById("rank").innerHTML = top.map(f => {
     const p = f.properties;
-    return `<tr data-id="${p.site_id}"><td>${p.rank}</td><td>${p.site_id}</td><td>${fmt(p.acres)}</td><td>${fmt(p.firm_mw)}</td><td>${musd(p.usd_per_firm_mw)}</td><td>${p.limiting_factor}</td><td class="${p.flood === "unmapped" ? "warn" : ""}">${p.flood}</td></tr>`;
+    return `<tr data-id="${p.site_id}"><td>${p.rank}</td><td>${p.site_id}</td><td>${fmt(p.acres)}</td><td>${fmt(p.firm_mw)}</td><td>${musd(p.usd_per_firm_mw)}</td></tr>`;
   }).join("");
   document.querySelectorAll("#rank tr").forEach(tr => tr.addEventListener("click", () => {
     sitesLayer.eachLayer(l => { if (l.feature.properties.site_id === tr.dataset.id) select(l.feature, l); });
     document.getElementById("map").scrollIntoView({ behavior: "smooth", block: "center" });
   }));
-
-  const stat = (v, l) => `<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`;
-  document.getElementById("stats").innerHTML =
-    stat(fmt(s.county.sites), "sites over 2,000 acres") +
-    stat(`${fmt(s.county.firm_gw, 1)} GW`, "firm power, all sites") +
-    stat(`$${fmt(s.county.best_musd, 1)}M`, "best cost per firm MW") +
-    stat(`${fmt(100 * s.county.spread)}%`, "cost spread across sites");
-
-  const c = s.county;
-  document.getElementById("finding").innerHTML = `
-    <p>Within ${c.name} County, cost per firm MW runs from $${fmt(c.best_musd, 1)}M to $${fmt(c.worst_musd, 1)}M, cheapest in the southwest. Annual solar yield across the same sites differs only ${fmt(100 * c.yield_spread, 1)}%.</p>
-    <p>Weather sets the ranking: it is the main cost driver at ${c.drivers.weather || 0} of ${c.sites} sites. Land is ${fmt(100 * c.land_share, 1)}% of capital cost, so buildable acreage decides how many firm megawatts a holding can host, not what each one costs.</p>
-    <p class="muted">The sizing search is fine enough not to matter: refining it moves the best and worst sites by under 0.5%.</p>`;
-
-  const g = s.gap;
-  document.getElementById("gap").innerHTML = `
-    <p>Size solar for annual energy and the battery for one night (${fmt(g.simple_pv, 1)} MWdc and ${fmt(g.simple_hours)} h per firm MW at ${g.site}), and the campus keeps the load on in only <b>${fmt(100 * g.simple_uptime, 1)}%</b> of hours. Meeting 99.9% takes ${fmt(g.best_pv, 1)} MWdc and ${fmt(g.best_hours)} h of storage: <b>${fmt(g.ratio, 1)}×</b> the cost.</p>
-    <p>The difference is consecutive dark days. The worst 5-day stretch in 25 years delivered ${fmt(100 * g.worst5_share)}% of a normal 5 days of solar energy. The battery must bridge it, and the solar must refill the battery afterwards.</p>
-    <p>Across West Texas, annual solar yield varies ${fmt(100 * s.feasibility.yield_spread)}% but firm cost varies <b>${fmt(100 * s.feasibility.cost_spread)}%</b> (El Paso to Abilene). Simple math predicts a ${fmt(100 * s.feasibility.simple_spread)}% spread. Ranking sites by annual sunshine misses most of the difference.</p>`;
-
-  const v = s.validation;
-  const row = (k, val, note, ok) => `<div class="row"><div><div class="k">${k}</div><div class="muted">${note}</div></div><div class="mono ${ok ? "pass" : "warn"}" style="text-align:right;font-size:13px">${val}</div></div>`;
-  document.getElementById("checks").innerHTML =
-    row("Layout vs built plants", `${fmt(100 * v.layout.test_mape_model, 1)}% error`, `Predicted MWdc of 10 unseen West Texas tracker plants (USPVDB), after tuning pitch and setback on 5 others. Naive acres-per-MW rule: ${fmt(100 * v.layout.test_mape_naive, 1)}%. Misses the 15% target: built plants range from 3.5 to 6.3 acres per MWdc by design choice, which footprint alone cannot reveal.`, v.layout.test_mape_model <= v.layout.test_mape_naive) +
-    row("Solar output vs NREL SAM", `${fmt(100 * Math.abs(v.sam.mean_diff), 1)}% difference`, `Annual energy at ${v.sam.site}, same weather and equipment, ${v.sam.years} years; worst single year ${fmt(100 * v.sam.max_abs_year_diff, 1)}%.`, true) +
-    row("Uptime re-check", v.uptime.all_pass ? "all pass" : "FAIL", `Every chosen design re-simulated at full scale, hour by hour, over 25 years. Minimum ${fmt(100 * v.uptime.min_uptime, 2)}%.`, v.uptime.all_pass);
 });
 </script>
 </body>
